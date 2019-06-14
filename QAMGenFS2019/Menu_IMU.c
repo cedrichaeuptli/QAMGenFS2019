@@ -176,6 +176,10 @@ void vMenu(void *pvParameters) {
 			{
 				vDisplayWriteStringAtPos(0,0,"QAMGen2019");
 				vDisplayWriteStringAtPos(2,0,"Status");
+				vDisplayWriteStringAtPos(3,0,"CPU:");
+				vDisplayWriteStringAtPos(3,5,"%d%%", ucCPULoad);
+				
+				
 				if(xSemaphoreTake(xStatusKey, 5 / portTICK_RATE_MS))
 				{
 					if((ulStatus && STATUS_ERROR)== STATUS_ERROR)
@@ -242,7 +246,7 @@ void vMenu(void *pvParameters) {
 			if (ucMode == 2)
 			{
 				vDisplayWriteStringAtPos(0,0,"QAM Data");
-				if(xQueuePeek(xData,&ucData_to_send,5/portTICK_RATE_MS))
+				if(xQueuePeek(xALDPQueue,&ucData_to_send,5/portTICK_RATE_MS))
 				{
 					vDisplayWriteStringAtPos(1,0,"Data: %d", ucData_to_send);
 				}
@@ -371,10 +375,10 @@ void vIMU(void *pvParameters) {
 		}
 		else
 		{
-			if (uxQueueMessagesWaiting(xData)< 2)
+			if (uxQueueMessagesWaiting(xALDPQueue)< 2)
 			{
 				struct ALDP_t_class xALDP_Paket;
-				xALDP_Paket.aldp_hdr_byte_2 = 0x01;
+				xALDP_Paket.aldp_size = 0x01;
 				if(xQAMSettings.bits.bSource_I2C)
 				{
 					xALDP_Paket.aldp_hdr_byte_1 =  PAKET_TYPE_ALDP|ALDP_SRC_I2C; 
@@ -385,13 +389,13 @@ void vIMU(void *pvParameters) {
 				}
 				if(xQAMSettings.bits.bSource_Test)
 				{
-					xALDP_Paket.aldp_hdr_byte_1 = PAKET_TYPE_ALDP|ALDP_SRC_Test; 
+					xALDP_Paket.aldp_hdr_byte_1 = PAKET_TYPE_ALDP|ALDP_SRC_TEST; 
 				} 
 				xALDP_Paket.aldp_payload[0] = ucData_to_send;
-				xQueueSendToBack(xData,&xALDP_Paket,portMAX_DELAY);
+				xQueueSendToBack(xALDPQueue,(void *)&xALDP_Paket,portMAX_DELAY);
 			}
 		}
-		vTaskDelay(2 / portTICK_RATE_MS);
+		vTaskDelay(10 / portTICK_RATE_MS);
 	}
 }
 
@@ -400,9 +404,8 @@ void vIMU(void *pvParameters) {
 * vOutput is to manage the I/O Output
 * @param args Unused
 * @return Nothing
-* @author C.Hï¿½uptli
+* @author C.Haeuptli
 */
-
 void vOutput(void *pvParameters) {
 	(void) pvParameters;
 	
@@ -499,9 +502,9 @@ void vTestpattern(void *pvParameters){
 	vTaskSuspend(xTestpattern);
 	for(;;) {
 		
-		if (uxQueueMessagesWaiting(xData)< 2)
+		if (uxQueueMessagesWaiting(xALDPQueue)< 2)
 		{
-			xQueueSendToBack(xData,&ucTestpattern,portMAX_DELAY);
+			xQueueSendToBack(xALDPQueue,(void *)&ucTestpattern,portMAX_DELAY);
 		}
 		vTaskDelay(2 / portTICK_RATE_MS);
 	}
